@@ -1,8 +1,9 @@
-// MÎK-MD WhatsApp Bot
+// =========================// MÎK-MD WhatsApp Bot
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason
 } from "@whiskeysockets/baileys"
+import { downloadContentFromMessage } from "@whiskeysockets/baileys"
 import axios from "axios"
 import Pino from "pino"
 import fs from "fs"
@@ -119,7 +120,7 @@ async function connectBot() {
     }
 
     // ⭐ STICKER MAKER
-    if (msg.message.imageMessage && text === ".sticker") {
+    if (msg.message.imageMessage && text.includes(".sticker")) {
       const buffer = await downloadMedia(msg, "image")
       const out = "./sticker.webp"
 
@@ -144,121 +145,3 @@ async function connectBot() {
       fs.unlinkSync(out)
       return
     }
-
-    // ====== DOWNLOADERS ======
-
-    // TikTok
-    if (text.startsWith(".tt ")) {
-      const url = text.split(" ")[1]
-      return tiktokDownloader(url, sock, from)
-    }
-
-    // Instagram
-    if (text.startsWith(".ig ")) {
-      const url = text.split(" ")[1]
-      return instagramDownloader(url, sock, from)
-    }
-
-    // YouTube Downloader
-    if (text.startsWith(".yt ")) {
-      const url = text.split(" ")[1]
-      return youtubeDownloader(url, sock, from)
-    }
-  })
-}
-
-connectBot()
-
-// =========================
-//   FUNCTIONS
-// =========================
-
-async function downloadMedia(msg, type) {
-  const buffer = await downloadContentFromMessage(
-    msg.message[`${type}Message`],
-    type
-  )
-  let data = Buffer.from([])
-  for await (const chunk of buffer) {
-    data = Buffer.concat([data, chunk])
-  }
-  return data
-}
-
-// IMAGE TO STICKER
-function imageToSticker(input, output) {
-  return new Promise((resolve, reject) => {
-    ffmpeg()
-      .input(input)
-      .outputOptions(["-vf", "scale=512:512:force_original_aspect_ratio=decrease"])
-      .save(output)
-      .on("end", resolve)
-      .on("error", reject)
-  })
-}
-
-// VIDEO TO STICKER
-function videoToSticker(input, output) {
-  return new Promise((resolve, reject) => {
-    ffmpeg()
-      .input(input)
-      .outputOptions([
-        "-vf", "scale=512:512:force_original_aspect_ratio=decrease",
-        "-t", "8"
-      ])
-      .save(output)
-      .on("end", resolve)
-      .on("error", reject)
-  })
-}
-
-// TikTok Downloader
-async function tiktokDownloader(url, sock, from) {
-  try {
-    await sock.sendMessage(from, { text: "Downloading from TikTok... ⏳" })
-    
-    const res = await axios.get(`https://api.xyroinee.xyz/api/tiktokdl?url=${url}`)
-    const video = res.data.data.play
-
-    await sock.sendMessage(from, {
-      video: { url: video },
-      caption: "TikTok Downloaded ✓"
-    })
-  } catch (e) {
-    sock.sendMessage(from, { text: "❌ TikTok download failed." })
-  }
-}
-
-// Instagram Downloader
-async function instagramDownloader(url, sock, from) {
-  try {
-    await sock.sendMessage(from, { text: "Downloading Instagram Reel... ⏳" })
-
-    const res = await axios.get(`https://itzpire.site/download/instagram?url=${url}`)
-    const video = res.data.result.url[0].url
-
-    await sock.sendMessage(from, {
-      video: { url: video },
-      caption: "Instagram Downloaded ✓"
-    })
-  } catch (e) {
-    sock.sendMessage(from, { text: "❌ Instagram download failed." })
-  }
-}
-
-// YouTube Downloader
-async function youtubeDownloader(url, sock, from) {
-  try {
-    await sock.sendMessage(from, { text: "Downloading YouTube Video... ⏳" })
-
-    const res = await axios.get(`https://api.agatz.xyz/api/ytdown?url=${url}`)
-    const video = res.data.result.video
-
-    await sock.sendMessage(from, {
-      video: { url: video },
-      caption: "YouTube Downloaded ✓"
-    })
-  } catch (e) {
-    sock.sendMessage(from, { text: "❌ YouTube download failed." })
-  }
-}
